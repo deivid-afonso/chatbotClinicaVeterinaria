@@ -3,49 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PataVida — Assistente Inteligente</title>
+<title>PataVida — Assistente</title>
+
 <style>
 body{font-family:Arial;background:#faf7f2;margin:0}
 .shell{max-width:780px;margin:20px auto;background:#fff;border-radius:16px;display:flex;flex-direction:column;height:92vh;box-shadow:0 10px 40px rgba(0,0,0,0.08)}
 .header{background:#2e5c3a;color:#fff;padding:16px;font-weight:bold}
 .messages{flex:1;overflow:auto;padding:15px;display:flex;flex-direction:column;gap:8px}
-.bubble{padding:10px 14px;border-radius:14px;max-width:75%;line-height:1.4}
+.bubble{padding:10px 14px;border-radius:14px;max-width:75%}
 .user{background:#2e5c3a;color:#fff;margin-left:auto}
 .bot{background:#e8f0e9}
 .input{display:flex;padding:10px;border-top:1px solid #ddd;gap:8px}
-textarea{flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;resize:none}
-button{padding:10px 14px;border:none;border-radius:10px;background:#2e5c3a;color:#fff;cursor:pointer}
-button:disabled{background:#aaa}
+textarea{flex:1;padding:10px;border-radius:10px;border:1px solid #ccc}
+button{padding:10px;border:none;border-radius:10px;background:#2e5c3a;color:#fff}
 .typing{font-size:12px;color:#888}
 </style>
 </head>
+
 <body>
+
 <div class="shell">
-  <div class="header">🐾 PataVida Assistente Inteligente</div>
-
-  <div style="padding:10px">
-    <input type="password" id="apiKey" placeholder="Cole sua Groq API Key" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc">
-  </div>
-
+  <div class="header">🐾 PataVida Assistente</div>
   <div class="messages" id="messages"></div>
 
   <div class="input">
-    <textarea id="txt" rows="1" placeholder="Digite sua mensagem..."></textarea>
-    <button id="btn" onclick="handleSend()">Enviar</button>
+    <textarea id="txt"></textarea>
+    <button onclick="handleSend()">Enviar</button>
   </div>
 </div>
 
 <script>
-var API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-var SYS = `Você é o assistente virtual da PataVida Clínica Veterinária.
-Responda de forma:
-- Curta
-- Clara
-- Empática
-- Profissional
+var API_URL = 'https://ufl2nnt31m.execute-api.us-east-1.amazonaws.com/prod/chat';
 
-Se for emergência, diga para ligar imediatamente.`;
+var SYS = `Você é um assistente veterinário simpático e direto.`;
 
 var chatHistory = [];
 var loading = false;
@@ -55,7 +46,6 @@ function append(role, text){
   div.className = 'bubble ' + role;
   div.innerText = text;
   document.getElementById('messages').appendChild(div);
-  document.getElementById('messages').scrollTop = 999999;
 }
 
 function showTyping(){
@@ -75,18 +65,8 @@ async function handleSend(){
   if(loading) return;
 
   var txt = document.getElementById('txt');
-  var btn = document.getElementById('btn');
-  var key = document.getElementById('apiKey').value;
   var text = txt.value.trim();
-
   if(!text) return;
-  if(!key){
-    alert('Informe sua API Key');
-    return;
-  }
-
-  loading = true;
-  btn.disabled = true;
 
   append('user', text);
   txt.value='';
@@ -95,66 +75,34 @@ async function handleSend(){
 
   showTyping();
 
-  const controller = new AbortController();
-  setTimeout(()=>controller.abort(),15000);
-
   try{
     const res = await fetch(API_URL, {
       method:'POST',
-      signal: controller.signal,
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer ' + key
-      },
+      headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({
-        model:'llama-3.1-8b-instant',
         messages:[
           { role:'system', content: SYS },
           ...chatHistory
-        ],
-        temperature:0.7,
-        max_tokens:600
+        ]
       })
     });
 
     const data = await res.json();
-
     hideTyping();
 
-    if(!res.ok){
-      throw new Error(data?.error?.message || 'Erro API');
-    }
-
     var reply = data?.choices?.[0]?.message?.content;
-
-    if(!reply) throw new Error('Resposta vazia');
 
     append('bot', reply);
 
     chatHistory.push({ role:'assistant', content: reply });
 
-    // limitar histórico
-    if(chatHistory.length > 20){
-      chatHistory = chatHistory.slice(-20);
-    }
-
   }catch(e){
     hideTyping();
-    append('bot', 'Erro ao responder. Tente novamente.');
+    append('bot', 'Erro ao responder');
     console.error(e);
   }
-
-  loading = false;
-  btn.disabled = false;
 }
 
-// ENTER envia
-document.getElementById('txt').addEventListener('keydown', function(e){
-  if(e.key === 'Enter' && !e.shiftKey){
-    e.preventDefault();
-    handleSend();
-  }
-});
 </script>
 </body>
 </html>
